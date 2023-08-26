@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Bot</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: orange;
+        font-family: Arial, sans-serif;
+      }
+
+      .chat-container {
+        max-width: 600px;
+        margin: 50px auto;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .chat-log {
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .user-input {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: #f5f5f5;
+      }
+
+      #message-input {
+        flex-grow: 1;
+        padding: 8px;
+        border: none;
+        border-radius: 5px;
+      }
+
+      #send-button {
+        margin-left: 10px;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="chat-container">
+      <div class="chat-log"></div>
+      <div class="user-input">
+        <input
+          type="text"
+          id="message-input"
+          placeholder="Type your message..."
+        />
+        <button id="send-button" type="submit">Send</button>
+      </div>
+    </div>
+
+    <script>
+      const messageInput = document.getElementById("message-input");
+      const sendButton = document.getElementById("send-button");
+      const chatLog = document.querySelector(".chat-log");
+
+      // Load conversation history from local storage
+      let conversationHistory =
+        JSON.parse(localStorage.getItem("conversationHistory")) || [];
+
+      // Function to add a message to the chat log
+      function addMessageToChatLog(message, sender) {
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message", sender);
+        messageDiv.textContent = message;
+        chatLog.appendChild(messageDiv);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      // Function to handle sending messages
+      async function sendMessage() {
+        const userMessage = messageInput.value;
+        if (userMessage.trim() === "") return;
+
+        async function getResponse() {
+          let messages = [];
+          let history = "";
+          const jsonArr = JSON.parse(
+            localStorage.getItem("conversationHistory")
+          );
+          if (jsonArr) {
+            history = jsonArr
+              .filter((obj) => obj.sender === "user")
+              .map((obj) => obj.message)
+              .join("\n");
+          }
+          return await fetch("/query", {
+            method: "POST",
+            body: JSON.stringify({
+              query: userMessage,
+              history: history,
+            }),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }
+
+        const botResponse = await getResponse();
+
+        // Save user message to conversation history
+        conversationHistory.push({ message: userMessage, sender: "user" });
+        localStorage.setItem(
+          "conversationHistory",
+          JSON.stringify(conversationHistory)
+        );
+
+        addMessageToChatLog(userMessage, "user");
+        messageInput.value = "";
+
+        const aiResponse = await botResponse.text();
+
+        // Simulate API call (replace with actual API call)
+
+        // Save bot response to conversation history
+        conversationHistory.push({ message: aiResponse, sender: "bot" });
+        localStorage.setItem(
+          "conversationHistory",
+          JSON.stringify(conversationHistory)
+        );
+        addMessageToChatLog(aiResponse, "bot");
+      }
+
+      sendButton.addEventListener("click", sendMessage);
+      messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+
+      // Load conversation history on page load
+      conversationHistory.forEach((item) => {
+        addMessageToChatLog(item.message, item.sender);
+      });
+    </script>
+  </body>
+</html>
